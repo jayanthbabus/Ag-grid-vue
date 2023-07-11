@@ -1,0 +1,198 @@
+{
+  "table": {
+    "adminProperties": {
+      "name": "ENCReferenceDocuments",
+      "creationInfo": {
+        "datetime": "2023-04-09T13:07:18Z"
+      },
+      "modificationInfo": {
+        "datetime": "2023-04-09T13:07:42Z"
+      },
+      "description": "Reference Documents Summary Table",
+      "derivedtable": "",
+      "columnList": {
+        "column": [
+          {
+            "derivedfield": "",
+            "label": "emxEngineeringCentral.Common.Type",
+            "expression": "type",
+            "usesBusinessObject": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "Type",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": [
+                {
+                  "fieldSettingName": "Admin Type",
+                  "fieldSettingValue": "Type"
+                },
+                {
+                  "fieldSettingName": "Registered Suite",
+                  "fieldSettingValue": "EngineeringCentral"
+                }
+              ]
+            },
+            "fieldOrder": 1
+          },
+          {
+            "derivedfield": "",
+            "label": "emxEngineeringCentral.Common.Name",
+            "expression": "name",
+            "usesBusinessObject": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "Name",
+            "href": "../common/emxTree.jsp?mode=insert",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": [
+                {
+                  "fieldSettingName": "Registered Suite",
+                  "fieldSettingValue": "EngineeringCentral"
+                },
+                {
+                  "fieldSettingName": "Column Type",
+                  "fieldSettingValue": "program"
+                },
+                {
+                  "fieldSettingName": "function",
+                  "fieldSettingValue": "sum"
+                },
+                {
+                  "fieldSettingName": "program",
+                  "fieldSettingValue": "testprogram"
+                }
+              ]
+            },
+            "fieldOrder": 2
+          },
+          {
+            "derivedfield": "",
+            "label": "emxEngineeringCentral.Common.Rev",
+            "expression": "revision",
+            "usesBusinessObject": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "Revision",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": {
+                "fieldSettingName": "Registered Suite",
+                "fieldSettingValue": "EngineeringCentral"
+              }
+            },
+            "fieldOrder": 3
+          },
+          {
+            "derivedfield": "",
+            "label": "emxEngineeringCentral.Common.State",
+            "expression": "current",
+            "usesBusinessObject": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "State",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": [
+                {
+                  "fieldSettingName": "Admin Type",
+                  "fieldSettingValue": "State"
+                },
+                {
+                  "fieldSettingName": "Registered Suite",
+                  "fieldSettingValue": "EngineeringCentral"
+                }
+              ]
+            },
+            "fieldOrder": 4
+          },
+          {
+            "derivedfield": "",
+            "label": "emxEngineeringCentral.Common.Description",
+            "expression": "description",
+            "usesBusinessObject": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "Description",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": {
+                "fieldSettingName": "Registered Suite",
+                "fieldSettingValue": "EngineeringCentral"
+              }
+            },
+            "fieldOrder": 5
+          },
+          {
+            "derivedfield": "",
+            "geometry": {
+              "xLocation": 0,
+              "yLocation": 0,
+              "width": 1,
+              "height": 1,
+              "minWidth": 0,
+              "minHeight": 0
+            },
+            "name": "NewWindow",
+            "href": "../common/emxTree.jsp",
+            "sortType": 0,
+            "global": "",
+            "fieldSettingList": {
+              "fieldSetting": [
+                {
+                  "fieldSettingName": "Column Icon",
+                  "fieldSettingValue": "images/iconActionNewWindow.gif"
+                },
+                {
+                  "fieldSettingName": "Column Type",
+                  "fieldSettingValue": "icon"
+                },
+                {
+                  "fieldSettingName": "Registered Suite",
+                  "fieldSettingValue": "EngineeringCentral"
+                }
+              ]
+            },
+            "fieldOrder": 6
+          }
+        ]
+      }
+    }
+  }
+}
