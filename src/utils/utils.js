@@ -16,14 +16,13 @@ export function filterObjectsByFieldSetting(data, fieldSettingName) {
     const withoutFieldSetting = [];
 
     data.forEach(obj => {
-        if (obj.hasOwnProperty("fieldSettingList")) {
+        if (obj.fieldSettingList) {
             const fieldSettings = obj.fieldSettingList.fieldSetting;
             let hasFieldSetting = false;
 
             fieldSettings.forEach(setting => {
                 if (setting.fieldSettingName === fieldSettingName) {
                     hasFieldSetting = true;
-                    return;
                 }
             });
 
@@ -39,7 +38,6 @@ export function filterObjectsByFieldSetting(data, fieldSettingName) {
 }
 
 export function getColumnsBasedOnFieldSettingNameAndValue(columns, fieldSetting, fieldSettingValue) {
-    console.log(columns)
     return columns.filter(obj => {
         const fieldSettings = obj.fieldSettingList.fieldSetting;
         return fieldSettings.some(setting => setting.fieldSettingName === fieldSetting && setting.fieldSettingValue === fieldSettingValue);

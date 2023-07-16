@@ -1,9 +1,11 @@
 <template>
-    <v-container fluid>
-        <h4 class="table-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.name }}</h4>
-        <div class="sub-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.description }}</div>
+    <v-container fluid class="pt-0">
+        <!-- <h4 class="table-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.name }}</h4>
+        <div class="sub-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.description }}</div> -->
         <v-toolbar dense>
-            <div class="showing-message">Showing 1 - {{ currentFromPageSize }} of {{ tableObjectsList.length }}</div>
+            <div class="showing-message">
+                Showing <strong>1</strong> - <strong>{{ currentFromPageSize }}</strong> of <strong>{{ tableObjectsList.length }}</strong>
+            </div>
             <v-spacer></v-spacer>
             <div>
                 <!-- <v-btn small color="primary"><v-icon left>mdi-upload</v-icon> Promote</v-btn>
@@ -17,7 +19,7 @@
         <div class="ag-grid-container" @contextmenu.prevent id="myGrid">
             <ag-grid-vue
                 ref="agGrid"
-                style="width: 100%; height: 75vh;"
+                style="width: 100%; height: 87vh;"
                 class="ag-theme-alpine"
                 :rowData="tableData"
                 :is-quick-filter="true"
@@ -38,7 +40,12 @@
                 <div class="list-item" @click="handleContextMenuOption('delete')"><v-icon class="delete-icon">mdi-delete</v-icon> Delete</div>
                 <!-- Add more context menu options as needed -->
             </div>
-            <v-btn class="down-arrow" fab dark color="primary" @click="loadMoreRecords">
+
+            <v-btn class="up-arrow" fab dark @click="scrollToTop">
+                <v-icon>mdi-chevron-up</v-icon>
+            </v-btn>
+
+            <v-btn class="down-arrow" fab dark @click="loadMoreRecords">
                 <v-icon>mdi-chevron-down</v-icon>
             </v-btn>
         </div>
@@ -135,10 +142,10 @@
 import { AgGridVue } from "ag-grid-vue";
 import "ag-grid-community/styles/ag-grid.css"; // Core grid CSS, always needed
 import "ag-grid-community/styles/ag-theme-alpine.css";
-import CustomHeaderComponent from "./customHeader.vue";
 import { write as writeExcel, utils as XLSXUtils } from "xlsx";
 import { saveAs } from "file-saver";
 import axios from "axios";
+import moment from "moment";
 import {
     filterColumnsBasedOnAccessExpression,
     filterObjectsByFieldSetting,
@@ -148,7 +155,7 @@ import {
 
 //import 'ag-grid-enterprise';
 export default {
-    name: "Table",
+    name: "DashboardTable",
     components: {
         "ag-grid-vue": AgGridVue
     },
@@ -160,7 +167,9 @@ export default {
                 sortable: true,
                 resizable: true
             },
-            gridOptions: {},
+            gridOptions: {
+                rowHeight: 24
+            },
             columnDefs: [],
             apiData: [],
             columnList: [],
@@ -185,9 +194,7 @@ export default {
     },
     computed: {
         frameworkComponents() {
-            return {
-                customHeaderComponent: CustomHeaderComponent // Register custom header component
-            };
+            return {};
         }
     },
     mounted() {
@@ -279,21 +286,11 @@ export default {
             if (option === "edit") {
                 this.editableColumns = getColumnsBasedOnFieldSettingNameAndValue(this.columnList, "editable", true);
                 console.log(this.editableColumns);
-                // const dateInputTypes = this.editableColumns.filter(column => column.customFieldSetting["Input Type"] === "date");
-                // console.log(this.selectedRow);
-                // dateInputTypes.forEach(value => {
-                //     console.log(value)
-                //     const dateObject = new Date(this.selectedRow[value.name]);
-                //     console.log(dateObject,this.selectedRow[value.name])
-                //     const year = dateObject.getFullYear();
-                //     const month = (dateObject.getMonth() + 1).toString().padStart(2, "0");
-                //     const day = dateObject
-                //         .getDate()
-                //         .toString()
-                //         .padStart(2, "0");
-                //     const formattedDate = `${year}-${month}-${day}`;
-                //     this.selectedRow[value.name] = formattedDate;
-                // });
+                const dateInputTypes = this.editableColumns.filter(column => column.customFieldSetting["Input Type"] === "date");
+                console.log(this.selectedRow);
+                dateInputTypes.forEach(value => {
+                    this.selectedRow[value.name] = moment(this.selectedRow[value.name], "DD-MM-YYYY").format("YYYY-MM-DD");
+                });
                 this.editedRow = { ...this.selectedRow };
                 this.editModalVisible = true;
             }
@@ -360,17 +357,17 @@ export default {
                     });
                     console.log(this.columnDefs);
                     // adding checkbox to every row
-                    this.columnDefs.unshift({
-                        headerName: "",
-                        field: "selected",
-                        cellRendererFramework: "CheckboxCellRenderer",
-                        headerCheckboxSelectionFilteredOnly: true,
-                        minWidth: 100,
-                        checkboxSelection: true,
-                        headerCheckboxSelection: true,
-                        cellClass: "ag-checkbox-cell",
-                        cellRenderer: "checkboxRenderer"
-                    });
+                    // this.columnDefs.unshift({
+                    //     headerName: "",
+                    //     field: "selected",
+                    //     cellRendererFramework: "CheckboxCellRenderer",
+                    //     headerCheckboxSelectionFilteredOnly: true,
+                    //     minWidth: 100,
+                    //     checkboxSelection: true,
+                    //     headerCheckboxSelection: true,
+                    //     cellClass: "ag-checkbox-cell",
+                    //     cellRenderer: "checkboxRenderer"
+                    // });
                     // list of objects from objects list API
                     this.tableObjectsList = data[1];
                     console.log(this.tableObjectsList);
@@ -465,11 +462,14 @@ export default {
 
                         this.currentFromPageSize = this.currentToPageSize;
                         this.currentToPageSize = this.currentFromPageSize + this.defaultPageSize;
-                        console.log(this.$refs.agGrid);
-                        const gridApi = this.$refs.agGrid;
-                        const lastRowIndex = this.tableData.length - 1;
-                        const lastRowNode = this.gridApi.getRowNode(lastRowIndex);
-                        gridApi.ensureNodeVisible(lastRowNode, "middle");
+
+                        this.$nextTick(() => {
+                            console.log("coming", this.currentFromPageSize);
+                            const gridApi = this.$refs.agGrid.api;
+                            const lastRowIndex = this.tableData.length - 1;
+                            this.agGridApi.ensureIndexVisible(this.currentFromPageSize - 30, "middle");
+                        });
+
                         break;
                     } else {
                         // Retry failed requests
@@ -496,6 +496,9 @@ export default {
 
         loadMoreRecords() {
             this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentToPageSize);
+        },
+        scrollToTop() {
+            this.agGridApi.ensureIndexVisible(0, "middle");
         }
     }
 };
@@ -594,7 +597,7 @@ export default {
 .v-input--selection-controls {
     margin-top: 0 !important;
 }
-.down-arrow {
+/* .down-arrow {
     position: absolute !important;
     bottom: 10px;
     right: 10px;
@@ -602,13 +605,32 @@ export default {
 
 .down-arrow i {
     color: #ffffff;
+} */
+.up-arrow,
+.down-arrow {
+    position: fixed !important;
+    bottom: 38px;
+    right: 3%;
+    width: 35px !important;
+    height: 35px !important;
+    border: 1px solid #e5e5e5;
+    background-color: #fff !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: blue !important;
+    border-radius: 0px !important;
+}
+
+.up-arrow {
+    bottom: 73px;
 }
 .showing-message {
     font-size: 14px;
     color: #555555;
     margin-right: 16px;
 }
-
 
 .custom-multi-select .v-chip.v-size--default {
     border-radius: 16px;

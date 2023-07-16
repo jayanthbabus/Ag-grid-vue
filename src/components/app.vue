@@ -1,15 +1,8 @@
 <template>
     <v-app>
         <v-container fluid>
-            <Table />
+            <dashboard-table></dashboard-table>
         </v-container>
-        <!-- <drop class="drop" :class="{ over }" @dragover="over = true" @dragleave="over = false" @drop="handleDrop">
-            <v-container fluid>
-                <top-toolbar />
-                <selection-table />
-                <object-details />
-            </v-container>
-        </drop> -->
     </v-app>
 </template>
 
@@ -39,27 +32,23 @@ body {
 </style>
 
 <script>
-
-import Table from './table.vue';
+import DashboardTable from "./table.vue";
 
 import { Constants } from "../js/Constants";
 
 export default {
-    components: {  Table },
-    data: function () {
+    components: { DashboardTable },
+    data: function() {
         return {
             over: false
         };
     },
-    computed: {
-    },
+    computed: {},
     watch: {},
     methods: {
         handleFilterChanged(filterText, column) {
             this.$refs.agGrid.api.setQuickFilter(filterText, column.field); // Set the quick filter for the specific column
-        },
-    },
-    
-   
+        }
+    }
 };
 </script>
