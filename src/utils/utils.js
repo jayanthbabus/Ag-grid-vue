@@ -58,7 +58,7 @@ async function retry(fn, retries) {
     throw error;
 }
 
-async function makeSingleApiCall(apiPostBody, url) {
+export async function makeSingleApiCall(apiPostBody, url) {
     try {
         const response = await axios.post(url, apiPostBody);
         return response.data;

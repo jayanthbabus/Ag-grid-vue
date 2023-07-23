@@ -1,15 +1,40 @@
 <template>
     <v-container fluid class="pt-0">
-        <!-- <h4 class="table-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.name }}</h4>
-        <div class="sub-heading" v-if="tableColumnsData.ematrix">{{ tableColumnsData.ematrix.table.adminProperties.description }}</div> -->
         <v-toolbar dense>
             <div class="showing-message">
-                Showing <strong>1</strong> - <strong>{{ currentFromPageSize }}</strong> of <strong>{{ tableObjectsList.length }}</strong>
+                Showing <strong>1</strong> -
+                <strong>{{ currentFromPageSize > tableObjectsList.length ? tableObjectsList.length : currentFromPageSize }}</strong> of
+                <strong>{{ tableObjectsList.length }}</strong>
             </div>
+            <!-- <div class="load-more-input-container">
+                <div>
+                    <v-text-field
+                        dense
+                        outlined
+                        v-model="loadMorePageSize"
+                        type="number"
+                        label="No.of Records to Load"
+                        class="load-more-input"
+                        :min="1"
+                        :max="tableObjectsList.length"
+                    ></v-text-field>
+                </div>
+
+                <div>
+                    <v-btn
+                        v-if="currentFromPageSize < tableObjectsList.length"
+                        class="right-arrow"
+                        fab
+                        dark
+                        @click="loadMoreRecords"
+                        :disabled="isLoadMoreDisabled"
+                    >
+                        <v-icon>mdi-chevron-right</v-icon>
+                    </v-btn>
+                </div>
+            </div> -->
             <v-spacer></v-spacer>
             <div>
-                <!-- <v-btn small color="primary"><v-icon left>mdi-upload</v-icon> Promote</v-btn>
-                <v-btn small color="success"><v-icon left>mdi-download</v-icon> Demote</v-btn> -->
                 <v-btn color="info" small @click="exportToExcel">
                     <v-icon left>mdi-file-excel</v-icon>
                     Export Excel
@@ -19,7 +44,7 @@
         <div class="ag-grid-container" @contextmenu.prevent id="myGrid">
             <ag-grid-vue
                 ref="agGrid"
-                style="width: 100%; height: 87vh;"
+                style=" height: 87vh;"
                 class="ag-theme-alpine"
                 :rowData="tableData"
                 :is-quick-filter="true"
@@ -30,14 +55,21 @@
                 animateRows="true"
                 :frameworkComponents="frameworkComponents"
                 @gridReady="onGridReady"
-                :autoSizeColumns="true"
                 :rowSelection="rowSelection"
             ></ag-grid-vue>
             <div v-if="showContextMenu" class="context-menu" :style="contextMenuStyle">
-                <div class="list-item" @click="handleContextMenuOption('edit')"><v-icon class="pencil-icon">mdi-pencil</v-icon> Edit</div>
-                <div class="list-item" @click="handleContextMenuOption('promote')"><v-icon class="pencil-icon">mdi-upload</v-icon> Promote</div>
-                <div class="list-item" @click="handleContextMenuOption('demote')"><v-icon class="delete-icon">mdi-download</v-icon> Demote</div>
-                <div class="list-item" @click="handleContextMenuOption('delete')"><v-icon class="delete-icon">mdi-delete</v-icon> Delete</div>
+                <div v-if="selectedRow['Modify'] === 'TRUE'" class="list-item" @click="handleContextMenuOption('edit')">
+                    <v-icon class="pencil-icon">mdi-pencil</v-icon> Edit
+                </div>
+                <div v-if="selectedRow['Promote'] === 'TRUE'" class="list-item" @click="handleContextMenuOption('promote')">
+                    <v-icon class="pencil-icon">mdi-upload</v-icon> Promote
+                </div>
+                <div v-if="selectedRow['Demote'] === 'TRUE'" class="list-item" @click="handleContextMenuOption('demote')">
+                    <v-icon class="delete-icon">mdi-download</v-icon> Demote
+                </div>
+                <div v-if="selectedRow['Delete'] === 'TRUE'" class="list-item" @click="handleContextMenuOption('delete')">
+                    <v-icon class="delete-icon">mdi-delete</v-icon> Delete
+                </div>
                 <!-- Add more context menu options as needed -->
             </div>
 
@@ -45,7 +77,7 @@
                 <v-icon>mdi-chevron-up</v-icon>
             </v-btn>
 
-            <v-btn class="down-arrow" fab dark @click="loadMoreRecords">
+            <v-btn v-if="currentFromPageSize < tableObjectsList.length" class="down-arrow" fab dark @click="loadMoreRecords" :disabled="isLoadMoreDisabled">
                 <v-icon>mdi-chevron-down</v-icon>
             </v-btn>
         </div>
@@ -146,12 +178,7 @@ import { write as writeExcel, utils as XLSXUtils } from "xlsx";
 import { saveAs } from "file-saver";
 import axios from "axios";
 import moment from "moment";
-import {
-    filterColumnsBasedOnAccessExpression,
-    filterObjectsByFieldSetting,
-    getColumnsBasedOnFieldSettingNameAndValue,
-    makeMultipleApiCalls
-} from "../utils/utils.js";
+import { filterColumnsBasedOnAccessExpression, getColumnsBasedOnFieldSettingNameAndValue, makeSingleApiCall } from "../utils/utils.js";
 
 //import 'ag-grid-enterprise';
 export default {
@@ -165,10 +192,14 @@ export default {
             defaultColDef: {
                 filter: true,
                 sortable: true,
-                resizable: true
+                resizable: true,
+                minWidth: 150, // Set a minimum width for this column
+                flex: 2,
+                maxWidth: 300 // Use the flex property to auto-size the column based on content
             },
             gridOptions: {
-                rowHeight: 24
+                rowHeight: 24,
+                suppressAutoSize: true
             },
             columnDefs: [],
             apiData: [],
@@ -189,7 +220,9 @@ export default {
             defaultPageSize: 30,
             currentFromPageSize: 0,
             currentToPageSize: 30,
-            searchInput: ""
+            searchInput: "",
+            isLoadMoreDisabled: false,
+            loadMorePageSize: 30
         };
     },
     computed: {
@@ -203,9 +236,13 @@ export default {
 
     methods: {
         onFirstDataRendered(params) {
-            params.api.sizeColumnsToFit();
             this.agGridApi = params.api;
+
+            params.api.sizeColumnsToFit();
+
+            // Resize columns to fit the available width initially
         },
+
         exportToExcel() {
             if (this.agGridApi) {
                 // Get the ag-Grid data as an array of objects
@@ -233,11 +270,12 @@ export default {
             }
         },
         onGridReady(params) {
-            params.api.sizeColumnsToFit(); // Resize columns to take full width // Register the context menu event listener
+            // params.api.sizeColumnsToFit(); // Resize columns to take full width // Register the context menu event listener
             params.api.addEventListener("cellMouseDown", this.showContextMenuHandler);
             this.preventContextMenu();
 
             this.gridApi = params.api;
+
             const gridContainer = document.querySelector(".ag-root-wrapper-body");
             const scrollElement = gridContainer.querySelector(".ag-body-viewport");
             scrollElement.addEventListener("scroll", this.handleGridScroll);
@@ -349,26 +387,13 @@ export default {
                             field: value.name.split(" ").join(""),
                             filter: "agTextColumnFilter",
                             cellRenderer: params => {
-                                // put the value in bold
-                                return params.value;
-                            },
-                            minWidth: 200
+                                const content = params.value;
+                                const tooltip = `<span title="${content}">${content}</span>`;
+                                return tooltip;
+                            }
                         };
                     });
                     console.log(this.columnDefs);
-                    // adding checkbox to every row
-                    // this.columnDefs.unshift({
-                    //     headerName: "",
-                    //     field: "selected",
-                    //     cellRendererFramework: "CheckboxCellRenderer",
-                    //     headerCheckboxSelectionFilteredOnly: true,
-                    //     minWidth: 100,
-                    //     checkboxSelection: true,
-                    //     headerCheckboxSelection: true,
-                    //     cellClass: "ag-checkbox-cell",
-                    //     cellRenderer: "checkboxRenderer"
-                    // });
-                    // list of objects from objects list API
                     this.tableObjectsList = data[1];
                     console.log(this.tableObjectsList);
 
@@ -391,111 +416,55 @@ export default {
             }
         },
         async getDataForBasedOnColumnWise(from, to) {
-            const getexpressionUrl = "http://localhost:8080/widgets/WidgetService/getExprValue";
-            const getColumnValuesUrl = "http://localhost:8080/widgets/WidgetService/getColumnValues";
+            const getRowValuesUrl = "http://localhost:8080/widgets/WidgetService/getRowValues";
             const filteredColumnsBasedOnAccessExpression = filterColumnsBasedOnAccessExpression(this.columnList);
-            const [columnsWithFunctionFieldSetting, columnsWithoutFunctionFieldSetting] = filterObjectsByFieldSetting(
-                filteredColumnsBasedOnAccessExpression,
-                "function"
-            );
-            console.log("columns with function field setting", columnsWithFunctionFieldSetting);
-            console.log("columns without function field setting", columnsWithFunctionFieldSetting);
-            const apiPostbodiesForFunction = columnsWithFunctionFieldSetting.map(value => {
-                return {
-                    ColumnName: value.name.split(" ").join(""),
-                    Function: value.fieldSettingList.fieldSetting.find(setting => setting.fieldSettingName === "function").fieldSettingValue,
-                    RegisteredSuite: value.fieldSettingList.fieldSetting.find(setting => setting.fieldSettingName === "Registered Suite").fieldSettingValue,
-                    Program: value.fieldSettingList.fieldSetting.find(setting => setting.fieldSettingName === "program").fieldSettingValue,
-                    ObjectIds: this.tableObjectsList.slice(from, to)
-                };
-            });
-            const getDataForIndividualColumns = async (data, from, to) => {
-                const extractedObjectIds = this.tableObjectsList.slice(from, to);
-                const columnObjects = extractedObjectIds.map(objectId => {
-                    return data.map(value => {
-                        return {
-                            Id: objectId.id,
-                            ColumnName: value.name.split(" ").join(""),
-                            RegisteredSuite: value.fieldSettingList.fieldSetting.find(setting => setting.fieldSettingName === "Registered Suite")
-                                .fieldSettingValue
-                        };
-                    });
-                });
-                console.log(columnObjects);
-                const responses = await makeMultipleApiCalls(columnObjects.flat(), getexpressionUrl);
-                return responses;
-            };
-
-            try {
-                const MAX_RETRIES = 3;
-                let retryCount = 0;
-                let failedRequests = [];
-
-                while (retryCount <= MAX_RETRIES) {
-                    const { successfulResponses, failed } = await makeMultipleApiCalls(apiPostbodiesForFunction, getColumnValuesUrl);
-
-                    if (failedRequests.length === 0) {
-                        // All requests succeeded
-                        const mergedData = {};
-
-                        successfulResponses.forEach(column => {
-                            column.forEach(item => {
-                                const id = item.id;
-                                if (!mergedData[id]) {
-                                    mergedData[id] = { id };
-                                }
-                                Object.assign(mergedData[id], item);
-                            });
-                        });
-
-                        const output = Object.values(mergedData);
-                        this.tableData = this.tableData.concat(output);
-
-                        const individualColumnResponse = await getDataForIndividualColumns(columnsWithoutFunctionFieldSetting, from, to);
-                        console.log(individualColumnResponse);
-                        const updateddata = this.tableData.slice();
-                        individualColumnResponse.successfulResponses.forEach(item1 => {
-                            const matchingItemIndex = updateddata.findIndex(item2 => item2.id === item1.id);
-                            updateddata[matchingItemIndex] = { ...updateddata[matchingItemIndex], ...item1 };
-                        });
-                        this.tableData = updateddata;
-
-                        this.currentFromPageSize = this.currentToPageSize;
-                        this.currentToPageSize = this.currentFromPageSize + this.defaultPageSize;
-
-                        this.$nextTick(() => {
-                            console.log("coming", this.currentFromPageSize);
-                            const gridApi = this.$refs.agGrid.api;
-                            const lastRowIndex = this.tableData.length - 1;
-                            this.agGridApi.ensureIndexVisible(this.currentFromPageSize - 30, "middle");
-                        });
-
-                        break;
-                    } else {
-                        // Retry failed requests
-                        failedRequests = failedRequests.concat(failed);
-
-                        if (retryCount === MAX_RETRIES) {
-                            // Reached maximum retries
-                            console.error("Maximum retries reached for failed requests");
-                            console.error("Failed requests:", failedRequests);
-
-                            // Store the failed object IDs in an array or perform additional error handling as needed
-                            // Example: this.failedObjectIds = failedRequests;
-
-                            break;
-                        }
-
-                        retryCount++;
-                    }
+            const generatedPostBodies = filteredColumnsBasedOnAccessExpression.map(value => {
+                const keys = Object.keys(value.customFieldSetting);
+                if (keys.includes("function")) {
+                    return {
+                        ColumnName: value.name.split(" ").join(""),
+                        Function: value.customFieldSetting.function,
+                        Expression: value.expression,
+                        RegisteredSuite: value.customFieldSetting["Registered Suite"],
+                        Program: value.customFieldSetting.program
+                    };
+                } else {
+                    return {
+                        ColumnName: value.name.split(" ").join(""),
+                        Expression: value.expression,
+                        RegisteredSuite: value.customFieldSetting["Registered Suite"]
+                    };
                 }
-            } catch (error) {
-                console.error("Error:", error);
+            });
+
+            const mainPostBody = {
+                ColumnList: generatedPostBodies,
+                ObjectList: this.tableObjectsList.slice(from, to)
+            };
+            const res = await makeSingleApiCall(mainPostBody, getRowValuesUrl);
+            console.log(res);
+            this.tableData = [...this.tableData, ...res];
+            this.currentFromPageSize = this.currentToPageSize;
+            if (this.currentToPageSize > this.tableObjectsList.length) {
+                this.currentToPageSize = this.tableObjectsList.length;
+            } else {
+                this.currentToPageSize = this.currentFromPageSize + this.defaultPageSize;
             }
+
+            this.$nextTick(() => {
+                console.log("coming", this.agGridApi);
+                if (this.agGridApi) this.agGridApi.ensureIndexVisible(this.currentFromPageSize - 30, "middle");
+            });
         },
 
-        loadMoreRecords() {
-            this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentToPageSize);
+        async loadMoreRecords() {
+            const recordsToLoad = this.loadMorePageSize;
+            // Disable the button to prevent multiple clicks until records are fetched
+            this.isLoadMoreDisabled = true;
+            // Fetch more records and update the data
+            await this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentFromPageSize + recordsToLoad);
+            // Enable the button after records are fetched
+            this.isLoadMoreDisabled = false;
         },
         scrollToTop() {
             this.agGridApi.ensureIndexVisible(0, "middle");
@@ -505,9 +474,6 @@ export default {
 </script>
 
 <style>
-.ag-grid-container {
-    /* position: relative; */
-}
 .ag-theme-alpine .ag-root-wrapper {
     border: 1px solid #ccc;
 }
@@ -623,6 +589,35 @@ export default {
     border-radius: 0px !important;
 }
 
+.right-arrow {
+    width: 35px !important;
+    height: 33px !important;
+    border: 1px solid #e5e5e5;
+    background-color: #fff !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: blue !important;
+    border-radius: 5px !important;
+    box-shadow: none !important;
+}
+
+.load-more-input-container {
+    display: flex;
+    width: 18%;
+    margin-top: 24px;
+}
+.load-more-input {
+    margin-right: 1px !important;
+}
+.load-more-input .v-input__slot {
+    min-height: 20px !important; /* Adjust the height as needed */
+}
+
+.load-more-input .v-input__input {
+    font-size: 12px; /* Adjust the font size as needed */
+}
 .up-arrow {
     bottom: 73px;
 }
