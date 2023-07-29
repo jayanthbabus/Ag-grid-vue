@@ -71,11 +71,8 @@ export async function makeMultipleApiCalls(apiPostBodies, url) {
     try {
         const apiCalls = apiPostBodies.map(apiPostBody => makeSingleApiCall(apiPostBody, url));
         const responses = await Promise.allSettled(apiCalls);
-        console.log(responses);
         const successfulResponses = responses.filter(response => response.status === "fulfilled").map(response => response.value);
-
         const failedRequests = responses.filter(response => response.status === "rejected").map(response => response.reason.config.data);
-        console.log(successfulResponses, failedRequests);
         return { successfulResponses, failedRequests };
     } catch (error) {
         throw new Error("API calls failed");

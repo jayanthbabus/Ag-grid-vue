@@ -6,7 +6,7 @@
                 <strong>{{ currentFromPageSize > tableObjectsList.length ? tableObjectsList.length : currentFromPageSize }}</strong> of
                 <strong>{{ tableObjectsList.length }}</strong>
             </div>
-            <!-- <div class="load-more-input-container">
+            <div class="load-more-input-container">
                 <div>
                     <v-text-field
                         dense
@@ -32,9 +32,13 @@
                         <v-icon>mdi-chevron-right</v-icon>
                     </v-btn>
                 </div>
-            </div> -->
+            </div>
             <v-spacer></v-spacer>
             <div>
+                <v-btn color="primary" small @click="resetFilters">
+                    <v-icon left>mdi-filter-remove-outline</v-icon>
+                    Reset Filters
+                </v-btn>
                 <v-btn color="info" small @click="exportToExcel">
                     <v-icon left>mdi-file-excel</v-icon>
                     Export Excel
@@ -73,13 +77,13 @@
                 <!-- Add more context menu options as needed -->
             </div>
 
-            <v-btn class="up-arrow" fab dark @click="scrollToTop">
+            <!-- <v-btn class="up-arrow" fab dark @click="scrollToTop">
                 <v-icon>mdi-chevron-up</v-icon>
             </v-btn>
 
             <v-btn v-if="currentFromPageSize < tableObjectsList.length" class="down-arrow" fab dark @click="loadMoreRecords" :disabled="isLoadMoreDisabled">
                 <v-icon>mdi-chevron-down</v-icon>
-            </v-btn>
+            </v-btn> -->
         </div>
         <v-dialog v-model="editModalVisible" max-width="1000px">
             <v-card class="edit-modal">
@@ -199,7 +203,9 @@ export default {
             },
             gridOptions: {
                 rowHeight: 24,
-                suppressAutoSize: true
+                suppressAutoSize: true,
+                overlayLoadingTemplate: "<span class='ag-overlay-loading-center'>Please wait, data is loading...</span>",
+                overlayNoRowsTemplate: "<span class='ag-overlay-loading-center'>Please wait, data is loading...</span>"
             },
             columnDefs: [],
             apiData: [],
@@ -279,10 +285,6 @@ export default {
             const gridContainer = document.querySelector(".ag-root-wrapper-body");
             const scrollElement = gridContainer.querySelector(".ag-body-viewport");
             scrollElement.addEventListener("scroll", this.handleGridScroll);
-            // const gridContainer = this.$refs.agGrid.$el.querySelector(".ag-root-wrapper-body");
-            console.log(gridContainer);
-
-            //params.api.addEventListener("bodyScroll", this.handleGridScroll);
         },
 
         showContextMenuHandler(event) {
@@ -302,7 +304,6 @@ export default {
         preventContextMenu() {
             const gridElement = document.querySelector(".ag-root-wrapper");
             gridElement.addEventListener("contextmenu", event => {
-                console.log("coming");
                 event.preventDefault();
             });
         },
@@ -320,7 +321,6 @@ export default {
 
         handleContextMenuOption(option) {
             // Handle the selected context menu option
-            console.log("Selected option:", option);
             if (option === "edit") {
                 this.editableColumns = getColumnsBasedOnFieldSettingNameAndValue(this.columnList, "editable", true);
                 console.log(this.editableColumns);
@@ -372,30 +372,14 @@ export default {
                         // Loop through each field setting and merge it into the mergedFieldSettings object
                         fieldSettings.forEach(setting => {
                             const { fieldSettingName, fieldSettingValue } = setting;
-                            column.customFieldSetting[fieldSettingName] = fieldSettingValue;
+                            column.customFieldSetting[fieldSettingName] = fieldSettingValue.toString();
                         });
                         return column;
                     });
                     console.log("all columns", this.columnList);
-                    // filtering the columns based on Access Expression is false, if access expression is false, we are hiding that column in the grid
-                    const filteredColumnsBasedOnAccessExpression = filterColumnsBasedOnAccessExpression(this.columnList);
-                    console.log("filtered columns with access expression", filteredColumnsBasedOnAccessExpression);
-                    // column headers preparation with
-                    this.columnDefs = filteredColumnsBasedOnAccessExpression.map(value => {
-                        return {
-                            headerName: value.name,
-                            field: value.name.split(" ").join(""),
-                            filter: "agTextColumnFilter",
-                            cellRenderer: params => {
-                                const content = params.value;
-                                const tooltip = `<span title="${content}">${content}</span>`;
-                                return tooltip;
-                            }
-                        };
-                    });
-                    console.log(this.columnDefs);
+
                     this.tableObjectsList = data[1];
-                    console.log(this.tableObjectsList);
+                    console.log("Objects List", this.tableObjectsList);
 
                     this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentToPageSize);
                 })
@@ -406,7 +390,6 @@ export default {
         handleGridScroll(event) {
             const scrollElement = event.target;
             const isAtBottom = scrollElement.scrollTop + scrollElement.clientHeight === scrollElement.scrollHeight;
-            console.log(isAtBottom);
             if (isAtBottom) {
                 // Load more data or make an API call for additional rows
                 // ...
@@ -416,44 +399,91 @@ export default {
             }
         },
         async getDataForBasedOnColumnWise(from, to) {
+            console.log(from, to);
             const getRowValuesUrl = "http://localhost:8080/widgets/WidgetService/getRowValues";
-            const filteredColumnsBasedOnAccessExpression = filterColumnsBasedOnAccessExpression(this.columnList);
-            const generatedPostBodies = filteredColumnsBasedOnAccessExpression.map(value => {
+            const evaluateAccessUrl = "http://localhost:8080/widgets/WidgetService/evaluateAccess";
+            const columnsForEvaluation = [];
+            const columnsReadyForShow = [];
+            this.columnList.map(value => {
                 const keys = Object.keys(value.customFieldSetting);
-                if (keys.includes("function")) {
-                    return {
-                        ColumnName: value.name.split(" ").join(""),
-                        Function: value.customFieldSetting.function,
-                        Expression: value.expression,
-                        RegisteredSuite: value.customFieldSetting["Registered Suite"],
-                        Program: value.customFieldSetting.program
-                    };
+                if (keys.includes("Access Expression") || keys.includes("Access Function") || keys.includes("Access Program")) {
+                    columnsForEvaluation.push({
+                        ColumnName: value.name,
+                        Settings: value.customFieldSetting
+                    });
                 } else {
-                    return {
-                        ColumnName: value.name.split(" ").join(""),
+                    columnsReadyForShow.push({
+                        ColumnName: value.name,
                         Expression: value.expression,
-                        RegisteredSuite: value.customFieldSetting["Registered Suite"]
-                    };
+                        Settings: value.customFieldSetting
+                    });
                 }
             });
+            console.log("columns directly we can show", columnsReadyForShow);
+            console.log("columns for evaluation", columnsForEvaluation);
+            const evaluatedColumns = await makeSingleApiCall({ ColumnList: columnsForEvaluation }, evaluateAccessUrl);
+            console.log("evaluated columns response", evaluatedColumns);
+            const trueColumns = evaluatedColumns.reduce((result, obj) => {
+                Object.entries(obj).forEach(([key, value]) => {
+                    if (value === "true" && !result.includes(key)) {
+                        result.push(key);
+                    }
+                });
+                return result;
+            }, []);
+
+            console.log("columns to show after evaluation", trueColumns);
+            this.columnList.forEach(item => {
+                if (trueColumns.includes(item.name)) {
+                    columnsReadyForShow.push({
+                        ColumnName: item.name,
+                        Expression: item.expression,
+                        Settings: item.customFieldSetting
+                    });
+                }
+            });
+            console.log("all columns list after evaluation", columnsReadyForShow);
+            this.columnDefs = columnsReadyForShow.map(value => {
+                if (value.Settings["Input Type"] === "date") {
+                    return {
+                        headerName: value.ColumnName,
+                        field: value.ColumnName,
+                        filter: "agDateColumnFilter",
+                        filterParams: {
+                            browserDatePicker: true,
+                            comparator: this.customDateComparator
+                        }
+                    };
+                }
+                return {
+                    headerName: value.ColumnName,
+                    field: value.ColumnName,
+                    filter: "agTextColumnFilter",
+                    cellRenderer: params => {
+                        const content = params.value;
+                        const tooltip = `<span title="${content}">${content}</span>`;
+                        return tooltip;
+                    }
+                };
+            });
+            console.log("Column heading definition", this.columnDefs);
 
             const mainPostBody = {
-                ColumnList: generatedPostBodies,
+                ColumnList: columnsReadyForShow,
                 ObjectList: this.tableObjectsList.slice(from, to)
             };
             const res = await makeSingleApiCall(mainPostBody, getRowValuesUrl);
-            console.log(res);
+            console.log("get row values response", res);
             this.tableData = [...this.tableData, ...res];
-            this.currentFromPageSize = this.currentToPageSize;
+            console.log("Total Row data", this.tableData);
             if (this.currentToPageSize > this.tableObjectsList.length) {
                 this.currentToPageSize = this.tableObjectsList.length;
             } else {
-                this.currentToPageSize = this.currentFromPageSize + this.defaultPageSize;
+                this.currentToPageSize = this.currentFromPageSize + Number(this.loadMorePageSize);
             }
-
+            this.currentFromPageSize = this.currentToPageSize;
             this.$nextTick(() => {
-                console.log("coming", this.agGridApi);
-                if (this.agGridApi) this.agGridApi.ensureIndexVisible(this.currentFromPageSize - 30, "middle");
+                if (this.agGridApi) this.agGridApi.ensureIndexVisible(this.currentFromPageSize - this.loadMorePageSize, "middle");
             });
         },
 
@@ -462,12 +492,36 @@ export default {
             // Disable the button to prevent multiple clicks until records are fetched
             this.isLoadMoreDisabled = true;
             // Fetch more records and update the data
-            await this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentFromPageSize + recordsToLoad);
+            await this.getDataForBasedOnColumnWise(this.currentFromPageSize, this.currentFromPageSize + Number(recordsToLoad));
             // Enable the button after records are fetched
             this.isLoadMoreDisabled = false;
         },
         scrollToTop() {
             this.agGridApi.ensureIndexVisible(0, "middle");
+        },
+        customDateComparator(filterLocalDateAtMidnight, cellValue) {
+            const cellDate = new Date(cellValue);
+            if (isNaN(cellDate.getTime())) {
+                // Invalid date, handle based on filter type
+                return -1;
+            }
+
+            const filterDate = new Date(filterLocalDateAtMidnight);
+            // Compare the dates
+            if (cellDate.getTime() === filterDate.getTime()) {
+                return 0; // Dates are equal
+            } else if (cellDate.getTime() < filterDate.getTime()) {
+                return -1; // Cell date is before filter date
+            } else {
+                return 1; // Cell date is after filter date
+            }
+        },
+        resetFilters() {
+            // Get the ag-Grid API and reset all filters
+            if (this.agGridApi) {
+                this.agGridApi.setFilterModel(null);
+                this.agGridApi.onFilterChanged();
+            }
         }
     }
 };
@@ -605,11 +659,11 @@ export default {
 
 .load-more-input-container {
     display: flex;
-    width: 18%;
     margin-top: 24px;
 }
 .load-more-input {
     margin-right: 1px !important;
+    width: 131px !important;
 }
 .load-more-input .v-input__slot {
     min-height: 20px !important; /* Adjust the height as needed */
